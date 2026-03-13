@@ -25,7 +25,20 @@ st.markdown("请上传包含以下列的 CSV 文件：`ID, Year, Author, Title, 
 uploaded_file = st.file_uploader("", type="csv")
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+    # 尝试使用多种编码格式读取文件，防止 UnicodeDecodeError
+    try:
+        # 1. 尝试带有 BOM 的 UTF-8（Windows Excel 常用）
+        df = pd.read_csv(uploaded_file, encoding='utf-8-sig')
+    except UnicodeDecodeError:
+        try:
+            # 2. 尝试 GBK 编码（中文 Windows 系统常用）
+            uploaded_file.seek(0) # 重置文件指针到开头
+            df = pd.read_csv(uploaded_file, encoding='gbk')
+        except UnicodeDecodeError:
+            # 3. 尝试 Latin-1 或 ISO 编码（PubMed 等海外数据库常用）
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, encoding='latin1', on_bad_lines='skip')
+            
     st.write(f"✅ 成功加载 {len(df)} 篇文献，预览如下：")
     st.dataframe(df.head(3))
 
@@ -79,4 +92,5 @@ if uploaded_file is not None:
                 )
                 
             except Exception as e:
+
                 st.error(f"生成过程中出现错误: {e}")
